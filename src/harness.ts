@@ -1,6 +1,3 @@
-import AdmZip from 'adm-zip';
-import { Buffer } from 'buffer';
-
 export interface Animator {
 	width: number;
 	height: number;
@@ -65,21 +62,30 @@ export async function play(a: Animator, ctx: CanvasRenderingContext2D) {
 	}
 }
 
-export async function renderToZip(a: Animator, ctx: CanvasRenderingContext2D) {
-	const zip = new AdmZip(),
-		frames = Math.floor(a.fps * a.duration),
+export async function renderToZip(a: Animator, ctx: CanvasRenderingContext2D): Promise<string> {
+	const frames = Math.floor(a.fps * a.duration),
 		digits = Math.ceil(Math.log10(frames));
 	let frame = 0;
 	for await (const dataURL of render(a, ctx, true)) {
 		const name = '0'.repeat(digits - frame.toString().length)
 			+ frame.toString()
 			+ '.png';
-		zip.addFile(name, Buffer.from(dataURL, 'base64'));
+		// split is to remove 'data:image/png;base64,` from the output
+		// zip.file(name, dataURL.split(',')[1], { base64: true });
 		frame++;
 	}
+
+	// const blob = await zip.generateAsync({ type: 'blob' }),
+	// 	url = URL.createObjectURL(blob);
+	return '';
 }
 
 import backflip from './backflip';
 import raf from './raf.webp';
 
-play(backflip(raf), ctx);
+(async () => {
+	const url = await renderToZip(backflip(raf), ctx),
+		link = document.getElementById('download') as HTMLAnchorElement;
+	link.href = url;
+	link.style.display = 'inline';
+})();

@@ -6,7 +6,7 @@ export default function backflip(imageURL: string): Animator {
 	return {
 		width: 320,
 		height: 320,
-		fps: 300,
+		fps: 60,
 		duration: 2,
 		async load() {
 			return new Promise((resolve, reject) => {
