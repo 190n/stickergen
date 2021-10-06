@@ -44,7 +44,7 @@ function createHeader(name: string, contents: Blob): Blob {
 		sum += view[i];
 	}
 	// store it
-	writeString(view, tarNumber(sum, 8), 0x094);
+	writeString(view, tarNumber(sum, 6), 0x094);
 	view[0x09A] = 0x00;
 	view[0x09B] = 0x20;
 
@@ -79,7 +79,7 @@ function tarNumber(n: number, length: number): string {
 	if (octal.length > length - 1) {
 		throw new Error('Tried to encode too large a number');
 	}
-	return '0'.repeat(length - octal.length) + octal;
+	return '0'.repeat(length - octal.length - 1) + octal;
 }
 
 /**
@@ -127,6 +127,6 @@ export default class Tarball {
 			...this.files,
 			// end with 2 empty records
 			new ArrayBuffer(1024),
-		]);
+		], { type: 'application/x-tar' });
 	}
 }

@@ -1,3 +1,5 @@
+import Tarball from './tarball';
+
 export interface Animator {
 	width: number;
 	height: number;
@@ -20,20 +22,20 @@ function delay(ms: number): Promise<void> {
 export function render(
 	a: Animator,
 	ctx: CanvasRenderingContext2D,
-	returnDataURLs: true,
-): AsyncGenerator<string, void, void>;
+	returnBlobs: true,
+): AsyncGenerator<Blob, void, void>;
 
 export function render(
 	a: Animator,
 	ctx: CanvasRenderingContext2D,
-	returnDataURLs: false,
+	returnBlobs: false,
 ): AsyncGenerator<undefined, void, void>;
 
 export async function* render(
 	a: Animator,
 	ctx: CanvasRenderingContext2D,
-	returnDataURLs: boolean,
-): AsyncGenerator<string | undefined, void, void> {
+	returnBlobs: boolean,
+): AsyncGenerator<Blob | undefined, void, void> {
 	ctx.canvas.width = a.width;
 	ctx.canvas.height = a.height;
 	await a.load?.();
@@ -43,8 +45,17 @@ export async function* render(
 		ctx.clearRect(0, 0, a.width, a.height);
 		a.render(t, ctx);
 		ctx.restore();
-		if (returnDataURLs) {
-			yield ctx.canvas.toDataURL('image/png');
+		if (returnBlobs) {
+			const blob = await new Promise<Blob>((resolve, reject) => {
+				canvas.toBlob(blob => {
+					if (blob === null) {
+						reject('Failed to create blob from canvas.');
+					} else {
+						resolve(blob);
+					}
+				}, 'image/png');
+			});
+			yield blob;
 		} else {
 			yield undefined;
 		}
@@ -64,20 +75,20 @@ export async function play(a: Animator, ctx: CanvasRenderingContext2D) {
 
 export async function renderToZip(a: Animator, ctx: CanvasRenderingContext2D): Promise<string> {
 	const frames = Math.floor(a.fps * a.duration),
-		digits = Math.ceil(Math.log10(frames));
+		digits = frames.toString().length,
+		tarball = new Tarball();
 	let frame = 0;
-	for await (const dataURL of render(a, ctx, true)) {
+	for await (const blob of render(a, ctx, true)) {
 		const name = '0'.repeat(digits - frame.toString().length)
 			+ frame.toString()
 			+ '.png';
-		// split is to remove 'data:image/png;base64,` from the output
-		// zip.file(name, dataURL.split(',')[1], { base64: true });
+		tarball.addFile(name, blob);
 		frame++;
 	}
 
-	// const blob = await zip.generateAsync({ type: 'blob' }),
-	// 	url = URL.createObjectURL(blob);
-	return '';
+	const blob = tarball.generate(),
+		url = URL.createObjectURL(blob);
+	return url;
 }
 
 import backflip from './backflip';
